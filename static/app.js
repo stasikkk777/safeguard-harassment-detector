@@ -537,9 +537,8 @@ function handleImportFile(input) {
 
 async function confirmImport() {
   if (!state.pendingImport) return;
+  const data = state.pendingImport;  // capture BEFORE closeModal nulls it
   closeModal('importModal');
-  const data = state.pendingImport;
-  state.pendingImport = null;
 
   try {
     const resp = await fetch('/api/import', {
