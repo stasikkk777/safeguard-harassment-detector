@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAFEGUARD — Harassment Detection System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=IBM+Plex+Mono:wght@300;400;500;600&family=Fira+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- ═══ HEADER ═══════════════════════════════════════════════════════════ -->
+  <header class="topbar">
+    <div class="topbar-logo">
+      <svg class="logo-hex" viewBox="0 0 40 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 1L38 11V34L20 44L2 34V11L20 1Z" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M20 8L32 15V29L20 36L8 29V15L20 8Z" fill="currentColor" opacity="0.15"/>
+        <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-size="14" font-family="monospace" fill="currentColor">⚡</text>
+      </svg>
+      <div class="logo-text-wrap">
+        <span class="logo-main">SAFEGUARD</span>
+        <span class="logo-sub">ONLINE HARASSMENT DETECTION SYSTEM by Bradu and Croitoru</span>
+      </div>
+    </div>
+
+    <div class="topbar-metrics">
+      <div class="metric-chip"><span class="metric-label">MESSAGES</span><span class="metric-val" id="mTotal">0</span></div>
+      <div class="metric-chip" id="chipFlagged"><span class="metric-label">FLAGGED</span><span class="metric-val" id="mFlagged">0%</span></div>
+      <div class="metric-chip"><span class="metric-label">AVG TOXICITY</span><span class="metric-val" id="mAvgTox">0.0%</span></div>
+      <div class="metric-chip"><span class="metric-label">USERS</span><span class="metric-val" id="mUsers">0</span></div>
+      <div class="metric-chip"><span class="metric-label">ALERTS</span><span class="metric-val" id="mAlerts">0</span></div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="status-beacon"><span class="beacon-dot"></span><span>MONITORING</span></div>
+      <button class="btn-header btn-export-hdr" onclick="showExportModal()">⬇ EXPORT</button>
+      <button class="btn-header btn-reset" id="resetBtn" onclick="resetSystem()">⟲ RESET</button>
+    </div>
+  </header>
+
+  <!-- ═══ MAIN LAYOUT ══════════════════════════════════════════════════════ -->
+  <main class="main-layout">
+
+    <!-- ─── LEFT: TABBED PANEL ──────────────────────────────────────────── -->
+    <aside class="mod-panel">
+
+      <!-- Tab navigation -->
+      <div class="tab-nav">
+        <button class="tab-btn active" data-tab="moderation" onclick="switchTab('moderation')">⚙ MONITOR</button>
+        <button class="tab-btn"        data-tab="analytics"  onclick="switchTab('analytics')">◈ ANALYTICS</button>
+        <button class="tab-btn"        data-tab="session"    onclick="switchTab('session')">⬡ SESSION</button>
+      </div>
+
+      <!-- ── TAB 1: MODERATION ─────────────────────────────────────────── -->
+      <div class="tab-pane active" id="tabModeration">
+
+        <div class="panel-block">
+          <div class="block-title"><span>⚠ LIVE ALERTS</span><span class="count-badge" id="badgeAlerts">0</span></div>
+          <div class="alerts-scroll" id="alertsList">
+            <div class="empty-msg">No alerts. System monitoring active…</div>
+          </div>
+        </div>
+
+        <div class="panel-block" id="analysisBlock" style="display:none">
+          <div class="block-title">⊕ LAST ANALYSIS</div>
+          <div class="analysis-body" id="analysisBody"></div>
+        </div>
+
+        <div class="panel-block">
+          <div class="block-title"><span>👤 USER RISK TABLE</span><span class="count-badge" id="badgeUsers">0</span></div>
+          <div class="table-scroll">
+            <table class="risk-table">
+              <thead><tr><th>USER</th><th>MSG</th><th>FLAG</th><th>WARN</th><th>RISK</th></tr></thead>
+              <tbody id="userTableBody"><tr><td colspan="5" class="empty-msg">No users yet</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel-block dsa-block">
+          <div class="block-title">⊛ DSA COMPONENTS ACTIVE</div>
+          <div class="dsa-grid">
+            <div class="dsa-row"><span class="dsa-chip">TRIE</span><span class="dsa-desc">O(m) keyword matching · <span id="dsaKeywords">32</span> phrases</span></div>
+            <div class="dsa-row"><span class="dsa-chip">P·QUEUE</span><span class="dsa-desc">Max-heap alert prioritization</span></div>
+            <div class="dsa-row"><span class="dsa-chip">DEQUE</span><span class="dsa-desc">FIFO message pipeline · 500 cap</span></div>
+            <div class="dsa-row"><span class="dsa-chip">HASHMAP</span><span class="dsa-desc">O(1) user + word-freq lookup</span></div>
+            <div class="dsa-row"><span class="dsa-chip">SLIDE·WIN</span><span class="dsa-desc">120 s behavioural window</span></div>
+          </div>
+        </div>
+
+      </div><!-- /tabModeration -->
+
+      <!-- ── TAB 2: ANALYTICS ──────────────────────────────────────────── -->
+      <div class="tab-pane" id="tabAnalytics">
+
+        <!-- Stat cards -->
+        <div class="panel-block">
+          <div class="block-title">⊕ SESSION STATISTICS</div>
+          <div class="stat-cards">
+            <div class="stat-card"><div class="sc-val" id="scTotal">0</div><div class="sc-lbl">MESSAGES</div></div>
+            <div class="stat-card sc-warn"><div class="sc-val" id="scFlagged">0</div><div class="sc-lbl">FLAGGED</div></div>
+            <div class="stat-card"><div class="sc-val" id="scAvg">0%</div><div class="sc-lbl">AVG TOXICITY</div></div>
+            <div class="stat-card sc-crit"><div class="sc-val" id="scUsers">0</div><div class="sc-lbl">USERS</div></div>
+          </div>
+        </div>
+
+        <!-- Severity distribution donut -->
+        <div class="panel-block">
+          <div class="block-title">PIE — SEVERITY DISTRIBUTION</div>
+          <div class="chart-wrap" style="height:180px">
+            <canvas id="chartSeverity"></canvas>
+          </div>
+        </div>
+
+        <!-- Toxicity timeline -->
+        <div class="panel-block">
+          <div class="block-title">LINE — TOXICITY TIMELINE (last 30)</div>
+          <div class="chart-wrap" style="height:130px">
+            <canvas id="chartTimeline"></canvas>
+          </div>
+        </div>
+
+        <!-- Top users bar -->
+        <div class="panel-block">
+          <div class="block-title">BAR — TOP TOXIC USERS</div>
+          <div class="chart-wrap" style="height:150px">
+            <canvas id="chartUsers"></canvas>
+          </div>
+        </div>
+
+        <!-- Top words bar -->
+        <div class="panel-block">
+          <div class="block-title">BAR — TOP TOXIC WORDS</div>
+          <div class="chart-wrap" style="height:200px">
+            <canvas id="chartWords"></canvas>
+          </div>
+        </div>
+
+      </div><!-- /tabAnalytics -->
+
+      <!-- ── TAB 3: SESSION ────────────────────────────────────────────── -->
+      <div class="tab-pane" id="tabSession">
+
+        <div class="panel-block">
+          <div class="block-title">⬇ EXPORT SESSION</div>
+          <p class="session-desc">Save all messages, toxicity scores, user warnings, and statistics to a JSON file. Use it to reload the session later.</p>
+          <button class="btn-session btn-export-full" onclick="showExportModal()">EXPORT SESSION JSON</button>
+        </div>
+
+        <div class="panel-block">
+          <div class="block-title">⬆ LOAD PREVIOUS SESSION</div>
+          <p class="session-desc">Select a previously exported JSON file. All messages will be restored exactly as they were, including scores and user risk levels.</p>
+          <label class="btn-session btn-load-file">
+            CHOOSE JSON FILE
+            <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImportFile(this)">
+          </label>
+        </div>
+
+        <div class="panel-block">
+          <div class="block-title">⊛ CURRENT SESSION INFO</div>
+          <div class="session-info">
+            <div class="si-row"><span class="si-lbl">STARTED</span><span class="si-val" id="siStarted">—</span></div>
+            <div class="si-row"><span class="si-lbl">MESSAGES</span><span class="si-val" id="siMessages">0</span></div>
+            <div class="si-row"><span class="si-lbl">FLAGGED</span><span class="si-val" id="siFlagged">0</span></div>
+            <div class="si-row"><span class="si-lbl">TOP USER</span><span class="si-val" id="siTopUser">—</span></div>
+          </div>
+        </div>
+
+      </div><!-- /tabSession -->
+
+    </aside>
+
+    <!-- ─── RIGHT: CHAT ──────────────────────────────────────────────────── -->
+    <section class="chat-panel">
+      <div class="panel-header chat-ph">
+        <span class="ph-icon">◈</span>
+        <span class="ph-title">CHAT SIMULATION</span>
+        <span class="ph-sub">Monitored environment · All messages analyzed in real-time</span>
+      </div>
+
+      <div class="messages-area" id="messagesArea">
+        <div class="welcome-banner">
+          <div class="wb-icon">⬡</div>
+          <div class="wb-text">
+            <strong>SAFEGUARD is active.</strong><br>
+            Every message is analyzed in real-time for harassment patterns across 6 toxicity categories.<br>
+            Use <strong>Quick Test</strong> buttons below or load a previous session from the Session tab.
+          </div>
+        </div>
+      </div>
+
+      <div class="input-zone">
+        <div class="user-selector">
+          <span class="us-label">SPEAKING AS:</span>
+          <div class="user-pills" id="userPills">
+            <button class="upill active" data-user="Alice"   onclick="selectUser(this)">Alice</button>
+            <button class="upill"        data-user="Bob"     onclick="selectUser(this)">Bob</button>
+            <button class="upill"        data-user="Charlie" onclick="selectUser(this)">Charlie</button>
+            <button class="upill"        data-user="Dana"    onclick="selectUser(this)">Dana</button>
+            <button class="upill"        data-user="Eve"     onclick="selectUser(this)">Eve</button>
+          </div>
+        </div>
+        <div class="input-row">
+          <div class="textarea-wrap">
+            <textarea id="msgInput" placeholder="Type a message… (Enter to send, Shift+Enter for new line)" rows="2" maxlength="500"></textarea>
+            <span class="char-count" id="charCount">0 / 500</span>
+          </div>
+          <button class="btn-send" id="sendBtn" onclick="sendMessage()">
+            <span>SEND</span><span class="send-arrow">▶</span>
+          </button>
+        </div>
+        <div class="quick-tests">
+          <span class="qt-label">QUICK TEST:</span>
+          <button class="qt-btn qt-safe"     onclick="quickTest('Hello everyone! Hope you all have a great day today 😊')">✓ Safe</button>
+          <button class="qt-btn qt-medium"   onclick="quickTest('That was really dumb, you need to shut up already!')">⚠ Medium</button>
+          <button class="qt-btn qt-high"     onclick="quickTest('You are pathetic and worthless, literally nobody likes you!')">▲ High</button>
+          <button class="qt-btn qt-critical" onclick="quickTest('Kill yourself you disgusting trash, I HATE YOU SO MUCH!!!')">✕ Critical</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ═══ EXPORT MODAL ════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="exportModal">
+    <div class="modal">
+      <div class="modal-icon">⬇</div>
+      <div class="modal-title">EXPORT SESSION</div>
+      <div class="modal-body" id="exportModalBody">Export the current moderation session to a JSON file?<br>This includes all messages, toxicity scores, user warnings, and statistics.</div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-confirm" onclick="confirmExport()">EXPORT JSON</button>
+        <button class="modal-btn modal-btn-cancel"  onclick="closeModal('exportModal')">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ IMPORT MODAL ════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="importModal">
+    <div class="modal">
+      <div class="modal-icon">⬆</div>
+      <div class="modal-title">LOAD SESSION</div>
+      <div class="modal-body" id="importModalBody">Loading session data…</div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-confirm" id="importConfirmBtn" onclick="confirmImport()">LOAD SESSION</button>
+        <button class="modal-btn modal-btn-cancel"  onclick="closeModal('importModal')">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-stack" id="toastStack"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
